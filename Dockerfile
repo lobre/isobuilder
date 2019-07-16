@@ -11,6 +11,8 @@ COPY isobuilder.sh /usr/local/bin/isobuilder
 
 RUN chmod +x /usr/local/bin/isobuilder
 
-WORKDIR /root
+RUN mkdir /root/workdir
+
+WORKDIR /root/workdir
 
 ENTRYPOINT ["/usr/local/bin/isobuilder"]

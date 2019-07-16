@@ -237,7 +237,7 @@ if [ ! -z "$kickstart" ]; then
     cp $kickstart $workdir/ks.cfg
 
     echo "> Adding kickstart to boot options..."
-    sed -i 's/append\ initrd\=initrd.img/append initrd=initrd.img\ ks\=cdrom:\/ks.cfg/' $workdir/iso/isolinux.cfg
+    sed -i 's/append\ initrd\=initrd.img/append initrd=initrd.img\ ks\=cdrom:\/ks.cfg/' $workdir/iso/isolinux/isolinux.cfg
 
     # Copy post script files
     for p in "${postscripts[@]}"; do
