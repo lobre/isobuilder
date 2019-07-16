@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# This script will extract, modify and repack a bootable iso image.
+# This script will extract, modify and repack a bootable Ubuntu desktop iso image.
 #
 # Features:
 #  - Add kickstart file
@@ -234,10 +234,11 @@ if [ ! -z "$kickstart" ]; then
     echo "[Kickstart]"   
 
     echo "> Adding kickstart file..."
-    cp $kickstart $workdir/ks.cfg
+    cp $kickstart $workdir/iso/ks.cfg
 
     echo "> Adding kickstart to boot options..."
-    sed -i 's/append\ initrd\=initrd.img/append initrd=initrd.img\ ks\=cdrom:\/ks.cfg/' $workdir/iso/isolinux/isolinux.cfg
+    sed -r -i '/live-install/{N;N;N;s/append  (.*)/append  ks=cdrom:\/ks.cfg \1/}' $workdir/iso/isolinux/txt.cfg
+    sed -i 's/Install Ubuntu/Install Ubuntu with kickstart/g' $workdir/iso/isolinux/txt.cfg
 
     # Copy post script files
     for p in "${postscripts[@]}"; do

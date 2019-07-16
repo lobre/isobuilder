@@ -1,6 +1,6 @@
 # isobuilder
 
-It allows an Ubuntu ISO to be customised and repacked to create a new ISO.
+It allows an Ubuntu desktop ISO to be customised and repacked to create a new ISO.
 
 ## Usage
 
