@@ -10,6 +10,7 @@
 # Dependencies:
 #  - genisoimage
 #  - isohybrid
+#  - mksquashfs
 # 
 # It should be run as root.
 # sudo -H ./isobuilder.sh -- ubuntu-18.04.2-desktop-amd64.iso
@@ -20,7 +21,7 @@
 set -e
 
 # Dependencies
-deps="genisoimage isohybrid"
+deps="genisoimage isohybrid mksquashfs"
 
 # Initialize our own variables:
 output="./output.iso"
@@ -102,6 +103,12 @@ do
     fi
 done
 
+# Check if we need to extract squashfs
+unsquashfs=true
+if [ ${#files[@]} -eq 0 ] && [ ${#commands[@]} -eq 0 ] && [ ${#scripts[@]} -eq 0 ]; then
+    unsquashfs=false
+fi
+
 # Cleanup function
 cleanup() {
     echo "> Cleaning working directory..."
@@ -141,77 +148,82 @@ cp -a /mnt/. $workdir/iso
 echo "> Unmounting iso..."
 umount /mnt 2> /dev/null
 
-###
-# Squashfs extract
-#
-echo "[Squashfs extract]"   
+# If any operation requiring to extract squashfs
+if $unsquashfs; then
 
-# Mount squashfs filesystem
-echo "> Mounting squashfs..."
-mount -t squashfs -o loop $workdir/iso/casper/filesystem.squashfs /mnt 2> /dev/null
+    ###
+    # Squashfs extract
+    #
+    echo "[Squashfs extract]"   
 
-# Copy squashfs content into working directory
-echo "> Copying squashfs content into working directory..."
-cp -a /mnt/. $workdir/squashfs
+    # Mount squashfs filesystem
+    echo "> Mounting squashfs..."
+    mount -t squashfs -o loop $workdir/iso/casper/filesystem.squashfs /mnt 2> /dev/null
 
-# Unmount squashfs
-echo "> Unmounting squashfs..."
-umount /mnt 2> /dev/null
+    # Copy squashfs content into working directory
+    echo "> Copying squashfs content into working directory..."
+    cp -a /mnt/. $workdir/squashfs
 
-###
-# Chroot
-#
-echo "[Chroot]"
+    # Unmount squashfs
+    echo "> Unmounting squashfs..."
+    umount /mnt 2> /dev/null
 
-# Preparing chroot
-echo "> Preparing chroot"
-mount --bind /proc $workdir/squashfs/proc
-mount --bind /sys $workdir/squashfs/sys
-mount -t devpts none $workdir/squashfs/dev/pts
-cp /etc/resolv.conf $workdir/squashfs/etc/resolv.conf
-cp /etc/hosts $workdir/squashfs/etc/hosts
+    ###
+    # Chroot
+    #
+    echo "[Chroot]"
 
-# Copy files into chroot
-for f in "${files[@]}"; do
-    src=$f
-    dest=/tmp/
+    # Preparing chroot
+    echo "> Preparing chroot"
+    mount --bind /proc $workdir/squashfs/proc
+    mount --bind /sys $workdir/squashfs/sys
+    mount -t devpts none $workdir/squashfs/dev/pts
+    cp /etc/resolv.conf $workdir/squashfs/etc/resolv.conf
+    cp /etc/hosts $workdir/squashfs/etc/hosts
 
-    if [[ $f == *":"* ]]; then
-        IFS=':' read -r -a parts <<< "$f"
-        src=${parts[0]}
-        dest=${parts[1]}
-    fi
+    # Copy files into chroot
+    for f in "${files[@]}"; do
+        src=$f
+        dest=/tmp/
 
-    echo "> Copying $src into chroot at $dest..."
-    cp $src $workdir/squashfs/$dest
-done
+        if [[ $f == *":"* ]]; then
+            IFS=':' read -r -a parts <<< "$f"
+            src=${parts[0]}
+            dest=${parts[1]}
+        fi
 
-# Run scripts into chroot
-for script in "${scripts[@]}"; do
-    echo "> Copying $script into chroot..."
-    cp $script $workdir/squashfs/tmp/$script
-    chmod +x $workdir/squashfs/tmp/$script
+        echo "> Copying $src into chroot at $dest..."
+        cp $src $workdir/squashfs/$dest
+    done
 
-    echo "> Executing $script into chroot..."
-    chroot $workdir/squashfs /tmp/$script
+    # Run scripts into chroot
+    for script in "${scripts[@]}"; do
+        echo "> Copying $script into chroot..."
+        cp $script $workdir/squashfs/tmp/$script
+        chmod +x $workdir/squashfs/tmp/$script
 
-    echo "> Deleting $script from chroot..."
-    rm -f $workdir/squashfs/tmp/$script
-done
+        echo "> Executing $script into chroot..."
+        chroot $workdir/squashfs /tmp/$script
 
-# Execute commands into chroot
-for cmd in "${commands[@]}"; do
-    echo "> Executing $cmd into chroot..."
-    chroot $workdir/squashfs /bin/bash -c "$cmd"
-done
+        echo "> Deleting $script from chroot..."
+        rm -f $workdir/squashfs/tmp/$script
+    done
 
-# Cleaning chroot
-echo "> Cleaning chroot..."
-chroot $workdir/squashfs umount -lf /sys 2> /dev/null || true
-chroot $workdir/squashfs umount -lf /proc 2> /dev/null || true
-chroot $workdir/squashfs umount -lf /dev/pts 2> /dev/null || true
-rm $workdir/squashfs/etc/resolv.conf
-rm $workdir/squashfs/etc/hosts
+    # Execute commands into chroot
+    for cmd in "${commands[@]}"; do
+        echo "> Executing $cmd into chroot..."
+        chroot $workdir/squashfs /bin/bash -c "$cmd"
+    done
+
+    # Cleaning chroot
+    echo "> Cleaning chroot..."
+    chroot $workdir/squashfs umount -lf /sys 2> /dev/null || true
+    chroot $workdir/squashfs umount -lf /proc 2> /dev/null || true
+    chroot $workdir/squashfs umount -lf /dev/pts 2> /dev/null || true
+    rm $workdir/squashfs/etc/resolv.conf
+    rm $workdir/squashfs/etc/hosts
+
+fi
 
 # Insert kickstart
 if [ ! -z "$kickstart" ]; then
@@ -233,24 +245,27 @@ if [ ! -z "$kickstart" ]; then
     done
 fi
 
-###
-# Pack squashfs
-#
-echo "[Pack squashfs]"   
 
-# Generating manifest
-echo "> Regenerating manifest..."
-chmod a+w $workdir/iso/casper/filesystem.manifest
-chroot $workdir/squashfs dpkg-query -W --showformat='${Package} ${Version}\n' > $workdir/iso/casper/filesystem.manifest
-chmod go-w $workdir/iso/casper/filesystem.manifest
+if $unsquashfs; then
+    ###
+    # Pack squashfs
+    #
+    echo "[Pack squashfs]"   
 
-# Remove old squashfs
-echo "> Removing old squashfs..."
-rm $workdir/iso/casper/filesystem.squashfs
+    # Generating manifest
+    echo "> Regenerating manifest..."
+    chmod a+w $workdir/iso/casper/filesystem.manifest
+    chroot $workdir/squashfs dpkg-query -W --showformat='${Package} ${Version}\n' > $workdir/iso/casper/filesystem.manifest
+    chmod go-w $workdir/iso/casper/filesystem.manifest
 
-# Create new squashfs
-echo "> Creating new squashfs..."
-mksquashfs $workdir/squashfs $workdir/iso/casper/filesystem.squashfs -info
+    # Remove old squashfs
+    echo "> Removing old squashfs..."
+    rm $workdir/iso/casper/filesystem.squashfs
+
+    # Create new squashfs
+    echo "> Creating new squashfs..."
+    mksquashfs $workdir/squashfs $workdir/iso/casper/filesystem.squashfs -info
+fi
 
 ###
 # Pack iso
