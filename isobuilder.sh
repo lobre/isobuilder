@@ -239,6 +239,8 @@ if [ ! -z "$kickstart" ]; then
     echo "> Adding kickstart to boot options..."
     sed -r -i '/live-install/{N;N;N;s/append  (.*)/append  ks=cdrom:\/ks.cfg \1/}' $workdir/iso/isolinux/txt.cfg
     sed -i 's/Install Ubuntu/Install Ubuntu with kickstart/g' $workdir/iso/isolinux/txt.cfg
+    sed -i 's/prompt.*/prompt 1/g' $workdir/iso/isolinux/isolinux.cfg
+    sed -i 's/timeout.*/timeout 0/g' $workdir/iso/isolinux/isolinux.cfg
 
     # Copy post script files
     for p in "${postscripts[@]}"; do
