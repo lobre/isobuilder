@@ -24,6 +24,7 @@ set -e
 deps="genisoimage isohybrid mksquashfs"
 
 # Initialize our own variables:
+action=false
 output="./output.iso"
 workdir="$HOME/.cache/isobuilder"
 kickstart=""
@@ -31,25 +32,28 @@ postscripts=()
 files=()
 commands=()
 scripts=()
+interactive=false
+unsquashfs=false
 
 function usage {
     echo "Usage: $(basename $0) [OPTION]... isofile.iso"
-    echo "  -o       output iso file path (default: $output)"
-    echo "  -w       working directory used internally"
-    echo "           and cleaned when terminated (default: $workdir)"
-    echo "  -k       kickstart file path"
-    echo "  -p       add post install file for kickstart (can be used multiple times)"
-    echo "  -f       add file to chroot (form <file> to copy in /tmp or <file>:<dest>)"
-    echo "           (can be used multiple times)"
-    echo "  -c       run command in chroot (can be used multiple times)"
-    echo "  -s       play script in chroot (can be used multiple times)"
-    echo "  -h       display help"
+    echo "  -o <file.iso>   output iso file path (default: $output)"
+    echo "  -w <workdir>    working directory used internally"
+    echo "                  and cleaned when terminated (default: $workdir)"
+    echo "  -k <ks.cfg>     kickstart file path"
+    echo "  -p <script.sh>  add post install file for kickstart (can be used multiple times)"
+    echo "  -f <file.txt>   add file to chroot (form <file> to copy in /tmp or <file>:<dest>)"
+    echo "                  (can be used multiple times)"
+    echo "  -c <command>    run command in chroot (can be used multiple times)"
+    echo "  -s <script.sh>  play script in chroot (can be used multiple times)"
+    echo "  -i              interactive chroot (quit with exit)"
+    echo "  -h              display help"
 }
 
 # The variable OPTIND holds the number of options parsed by the last call to getopts
 OPTIND=1         # Reset in case getopts has been used previously in the shell.
 
-while getopts "o:w:k:p:f:c:s:h" opt; do
+while getopts "o:w:k:p:f:c:s:ih" opt; do
     case "$opt" in
     h|\?)
         usage
@@ -63,15 +67,43 @@ while getopts "o:w:k:p:f:c:s:h" opt; do
         ;;
     w)  workdir=$OPTARG
         ;;
-    k)  kickstart=$OPTARG
+    k)  if [ ! -f "$OPTARG" ]; then
+            echo "$OPTARG is not a valid file"
+            exit 1 
+        fi
+        kickstart=$OPTARG
+        action=true
         ;;
-    p)  postscripts+=("$OPTARG")
+    p)  if [ ! -f "$OPTARG" ]; then
+            echo "$OPTARG is not a valid file"
+            exit 1 
+        fi
+        postscripts+=("$OPTARG")
+        action=true
         ;;
-    f)  files+=("$OPTARG")
+    f)  if [ ! -f "$OPTARG" ]; then
+            echo "$OPTARG is not a valid file"
+            exit 1 
+        fi
+        files+=("$OPTARG")
+        action=true
+        unsquashfs=true
         ;;
     c)  commands+=("$OPTARG")
+        action=true
+        unsquashfs=true
         ;;
-    s)  scripts+=("$OPTARG")
+    s)  if [ ! -f "$OPTARG" ]; then
+            echo "$OPTARG is not a valid file"
+            exit 1 
+        fi
+        scripts+=("$OPTARG")
+        action=true
+        unsquashfs=true
+        ;;
+    i)  interactive=true
+        action=true
+        unsquashfs=true
         ;;
     esac
 done
@@ -80,6 +112,12 @@ shift $((OPTIND-1))
 
 # Ignore -- if existing
 [ "${1:-}" = "--" ] && shift
+
+# Check if there is anything to do
+if ! $action; then
+    echo "nothing to do"
+    exit 0
+fi
 
 # Check iso arguments provided
 iso=$1
@@ -102,12 +140,6 @@ do
         exit 1
     fi
 done
-
-# Check if we need to extract squashfs
-unsquashfs=true
-if [ ${#files[@]} -eq 0 ] && [ ${#commands[@]} -eq 0 ] && [ ${#scripts[@]} -eq 0 ]; then
-    unsquashfs=false
-fi
 
 # Cleanup function
 cleanup() {
@@ -214,6 +246,12 @@ if $unsquashfs; then
         echo "> Executing $cmd into chroot..."
         chroot $workdir/squashfs /bin/bash -c "$cmd"
     done
+
+    # Interactive console in chroot
+    if $interactive; then
+        echo "> Entering interactive chroot..."
+        chroot $workdir/squashfs
+    fi
 
     # Cleaning chroot
     echo "> Cleaning chroot..."
