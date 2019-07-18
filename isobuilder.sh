@@ -28,7 +28,7 @@ action=false
 output="./output.iso"
 workdir="$HOME/.cache/isobuilder"
 kickstart=""
-postscripts=()
+push=()
 files=()
 commands=()
 scripts=()
@@ -41,7 +41,8 @@ function usage {
     echo "  -w <workdir>    working directory used internally"
     echo "                  and cleaned when terminated (default: $workdir)"
     echo "  -k <ks.cfg>     kickstart file path"
-    echo "  -p <script.sh>  add post install file for kickstart (can be used multiple times)"
+    echo "  -p <file.txt>   push or replace file in iso (form <file> to copy at root in iso or <file>:<dest>)"
+    echo "                  (can be used multiple times)"
     echo "  -f <file.txt>   add file to chroot (form <file> to copy in /tmp or <file>:<dest>)"
     echo "                  (can be used multiple times)"
     echo "  -c <command>    run command in chroot (can be used multiple times)"
@@ -59,52 +60,78 @@ while getopts "o:w:k:p:f:c:s:ih" opt; do
         usage
         exit 0
         ;;
+
     :)
         echo "Invalid option: $OPTARG requires an argument"
         exit 1
         ;;
+
     o)  output=$OPTARG
         ;;
+
     w)  workdir=$OPTARG
         ;;
+
     k)  if [ ! -f "$OPTARG" ]; then
             echo "$OPTARG is not a valid file"
             exit 1 
         fi
+
         kickstart=$OPTARG
         action=true
         ;;
-    p)  if [ ! -f "$OPTARG" ]; then
-            echo "$OPTARG is not a valid file"
+
+    p)  src=$OPTARG
+        if [[ $src == *":"* ]]; then
+            IFS=':' read -r -a parts <<< "$f"
+            src=${parts[0]}
+        fi
+
+        if [ ! -f "$src" ]; then
+            echo "$src is not a valid file"
             exit 1 
         fi
-        postscripts+=("$OPTARG")
+
+        push+=("$OPTARG")
         action=true
         ;;
-    f)  if [ ! -f "$OPTARG" ]; then
-            echo "$OPTARG is not a valid file"
+
+    f)  src=$OPTARG
+        if [[ $src == *":"* ]]; then
+            IFS=':' read -r -a parts <<< "$f"
+            src=${parts[0]}
+        fi
+
+        if [ ! -f "$src" ]; then
+            echo "$src is not a valid file"
             exit 1 
         fi
+        
         files+=("$OPTARG")
         action=true
         unsquashfs=true
         ;;
+
     c)  commands+=("$OPTARG")
         action=true
         unsquashfs=true
         ;;
+
     s)  if [ ! -f "$OPTARG" ]; then
             echo "$OPTARG is not a valid file"
             exit 1 
         fi
+
         scripts+=("$OPTARG")
         action=true
         unsquashfs=true
         ;;
+        
     i)  interactive=true
         action=true
         unsquashfs=true
         ;;
+
     esac
 done
 
@@ -216,7 +243,7 @@ if $unsquashfs; then
     # Copy files into chroot
     for f in "${files[@]}"; do
         src=$f
-        dest=/tmp/
+        dest=tmp/
 
         if [[ $f == *":"* ]]; then
             IFS=':' read -r -a parts <<< "$f"
@@ -224,8 +251,11 @@ if $unsquashfs; then
             dest=${parts[1]}
         fi
 
+        # Remove leading slash
+        dest=${dest#/}
+
         echo "> Copying $src into chroot at $dest..."
-        cp $src $workdir/squashfs/$dest
+        cp -f $src $workdir/squashfs/$dest
     done
 
     # Run scripts into chroot
@@ -272,20 +302,41 @@ if [ ! -z "$kickstart" ]; then
     echo "[Kickstart]"   
 
     echo "> Adding kickstart file..."
-    cp $kickstart $workdir/iso/ks.cfg
+    cp -f $kickstart $workdir/iso/ks.cfg
 
     echo "> Adding kickstart to boot options..."
-    sed -r -i '/live-install/{N;N;N;s/append  (.*)/append  ks=cdrom:\/ks.cfg \1/}' $workdir/iso/isolinux/txt.cfg
-    sed -i 's/Install Ubuntu/Install Ubuntu with kickstart/g' $workdir/iso/isolinux/txt.cfg
-    sed -i 's/prompt.*/prompt 1/g' $workdir/iso/isolinux/isolinux.cfg
-    sed -i 's/timeout.*/timeout 0/g' $workdir/iso/isolinux/isolinux.cfg
+    echo "label kickstart" >> $workdir/iso/isolinux/txt.cfg
+    echo "  menu label ^Install with Kickstart" >> $workdir/iso/isolinux/txt.cfg
+    echo "  kernel /casper/vmlinuz" >> $workdir/iso/isolinux/txt.cfg
+    echo "  append  ks=cdrom:/ks.cfg boot=casper only-ubiquity initrd=/casper/initrd quiet splash ---" >> $workdir/iso/isolinux/txt.cfg
 
-    # Copy post script files
-    for p in "${postscripts[@]}"; do
-        cp $p $workdir/iso/$p
-    done
+    echo "> Defining kickstart as default..."
+    sed -i 's/^default.*/default kickstart/g' $workdir/iso/isolinux/txt.cfg
+    sed -i 's/^prompt.*/prompt 1/g' $workdir/iso/isolinux/isolinux.cfg
+    sed -i 's/^timeout.*/timeout 5000/g' $workdir/iso/isolinux/isolinux.cfg
+
 fi
 
+###
+# Push files in iso
+###
+echo "[Push files in ISO]"   
+for p in "${push[@]}"; do
+    src=$p
+    dest=""
+        
+    if [[ $f == *":"* ]]; then
+        IFS=':' read -r -a parts <<< "$f"
+        src=${parts[0]}
+        dest=${parts[1]}
+    fi
+
+    # Remove leading slash
+    dest=${dest#/}
+
+    echo "> Pushing $src file into iso..."
+    cp -f $src $workdir/iso/$dest
+done
 
 if $unsquashfs; then
     ###
