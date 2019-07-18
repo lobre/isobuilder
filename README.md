@@ -8,9 +8,9 @@ It allows an Ubuntu desktop ISO to be customised and repacked to create a new IS
       -o <file.iso>   output iso file path (default: ./output.iso)
       -w <workdir>    working directory used internally
                       and cleaned when terminated (default: /root/.cache/isobuilder)
-      -p <file.txt>   push or replace file in iso (form <file> to copy at root in iso or <file>:<dest>)
+      -p <file/dir>   push or replace file/directory in iso (form <file/dir> to copy at root in iso or <file/dir>:<dest>)
                       (can be used multiple times)
-      -f <file.txt>   add file to chroot (form <file> to copy in /tmp or <file>:<dest>)
+      -f <file/dir>   add file/directory to chroot (form <file> to copy in /tmp or <file/dir>:<dest>)
                       (can be used multiple times)
       -c <command>    run command in chroot (can be used multiple times)
       -s <script.sh>  play script in chroot (can be used multiple times)

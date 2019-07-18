@@ -38,9 +38,9 @@ function usage {
     echo "  -o <file.iso>   output iso file path (default: $output)"
     echo "  -w <workdir>    working directory used internally"
     echo "                  and cleaned when terminated (default: $workdir)"
-    echo "  -p <file.txt>   push or replace file in iso (form <file> to copy at root in iso or <file>:<dest>)"
+    echo "  -p <file/dir>   push or replace file/directory in iso (form <file/dir> to copy at root in iso or <file/dir>:<dest>)"
     echo "                  (can be used multiple times)"
-    echo "  -f <file.txt>   add file to chroot (form <file> to copy in /tmp or <file>:<dest>)"
+    echo "  -f <file/dir>   add file/directory to chroot (form <file> to copy in /tmp or <file/dir>:<dest>)"
     echo "                  (can be used multiple times)"
     echo "  -c <command>    run command in chroot (can be used multiple times)"
     echo "  -s <script.sh>  play script in chroot (can be used multiple times)"
@@ -75,8 +75,8 @@ while getopts "o:w:p:f:c:s:ih" opt; do
             src=${parts[0]}
         fi
 
-        if [ ! -f "$src" ]; then
-            echo "$src is not a valid file"
+        if [ ! -e "$src" ]; then
+            echo "$src is not a valid file/directory"
             exit 1 
         fi
 
@@ -90,8 +90,8 @@ while getopts "o:w:p:f:c:s:ih" opt; do
             src=${parts[0]}
         fi
 
-        if [ ! -f "$src" ]; then
-            echo "$src is not a valid file"
+        if [ ! -e "$src" ]; then
+            echo "$src is not a valid file/directory"
             exit 1 
         fi
         
@@ -228,7 +228,7 @@ if $unsquashfs; then
     cp /etc/resolv.conf $workdir/squashfs/etc/resolv.conf
     cp /etc/hosts $workdir/squashfs/etc/hosts
 
-    # Copy files into chroot
+    # Copy files/directories into chroot
     for f in "${files[@]}"; do
         src=$f
         dest=tmp/
@@ -243,7 +243,7 @@ if $unsquashfs; then
         dest=${dest#/}
 
         echo "> Copying $src into chroot at $dest..."
-        cp -f $src $workdir/squashfs/$dest
+        cp -rf $src $workdir/squashfs/$dest
     done
 
     # Run scripts into chroot
@@ -317,7 +317,7 @@ for p in "${push[@]}"; do
     dest=${dest#/}
 
     echo "> Pushing $src file into iso..."
-    cp -f $src $workdir/iso/$dest
+    cp -rf $src $workdir/iso/$dest
 done
 
 ###
