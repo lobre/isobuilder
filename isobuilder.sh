@@ -3,8 +3,8 @@
 # This script will extract, modify and repack a bootable Ubuntu desktop iso image.
 #
 # Features:
-#  - Add kickstart file
-#  - Add post install kickstart scripts 
+#  - Add files to iso
+#  - Add files into the filesystem
 #  - Play scripts in a chroot of the filesystem
 #
 # Dependencies:
@@ -14,33 +14,30 @@
 # 
 # It should be run as root.
 # sudo -H ./isobuilder.sh -- ubuntu-18.04.2-desktop-amd64.iso
-#
-# It has been developed using the following link.
-# https://doc.ubuntu-fr.org/personnaliser_livecd
 
 set -e
 
 # Dependencies
 deps="genisoimage isohybrid mksquashfs"
 
-# Initialize our own variables:
+# Flags
 action=false
+unsquashfs=false
+
+# Initialize our own variables:
 output="./output.iso"
 workdir="$HOME/.cache/isobuilder"
-kickstart=""
 push=()
 files=()
 commands=()
 scripts=()
 interactive=false
-unsquashfs=false
 
 function usage {
     echo "Usage: $(basename $0) [OPTION]... isofile.iso"
     echo "  -o <file.iso>   output iso file path (default: $output)"
     echo "  -w <workdir>    working directory used internally"
     echo "                  and cleaned when terminated (default: $workdir)"
-    echo "  -k <ks.cfg>     kickstart file path"
     echo "  -p <file.txt>   push or replace file in iso (form <file> to copy at root in iso or <file>:<dest>)"
     echo "                  (can be used multiple times)"
     echo "  -f <file.txt>   add file to chroot (form <file> to copy in /tmp or <file>:<dest>)"
@@ -54,7 +51,7 @@ function usage {
 # The variable OPTIND holds the number of options parsed by the last call to getopts
 OPTIND=1         # Reset in case getopts has been used previously in the shell.
 
-while getopts "o:w:k:p:f:c:s:ih" opt; do
+while getopts "o:w:p:f:c:s:ih" opt; do
     case "$opt" in
     h|\?)
         usage
@@ -70,15 +67,6 @@ while getopts "o:w:k:p:f:c:s:ih" opt; do
         ;;
 
     w)  workdir=$OPTARG
-        ;;
-
-    k)  if [ ! -f "$OPTARG" ]; then
-            echo "$OPTARG is not a valid file"
-            exit 1 
-        fi
-
-        kickstart=$OPTARG
-        action=true
         ;;
 
     p)  src=$OPTARG
@@ -291,30 +279,24 @@ if $unsquashfs; then
     rm $workdir/squashfs/etc/resolv.conf
     rm $workdir/squashfs/etc/hosts
 
-fi
-
-# Insert kickstart
-if [ ! -z "$kickstart" ]; then
-
     ###
-    # Kickstart
-    ###
-    echo "[Kickstart]"   
+    # Pack squashfs
+    #
+    echo "[Pack squashfs]"   
 
-    echo "> Adding kickstart file..."
-    cp -f $kickstart $workdir/iso/ks.cfg
+    # Generating manifest
+    echo "> Regenerating manifest..."
+    chmod a+w $workdir/iso/casper/filesystem.manifest
+    chroot $workdir/squashfs dpkg-query -W --showformat='${Package} ${Version}\n' > $workdir/iso/casper/filesystem.manifest
+    chmod go-w $workdir/iso/casper/filesystem.manifest
 
-    echo "> Adding kickstart to boot options..."
-    echo "label kickstart" >> $workdir/iso/isolinux/txt.cfg
-    echo "  menu label ^Install with Kickstart" >> $workdir/iso/isolinux/txt.cfg
-    echo "  kernel /casper/vmlinuz" >> $workdir/iso/isolinux/txt.cfg
-    echo "  append  ks=cdrom:/ks.cfg boot=casper only-ubiquity initrd=/casper/initrd quiet splash ---" >> $workdir/iso/isolinux/txt.cfg
+    # Remove old squashfs
+    echo "> Removing old squashfs..."
+    rm $workdir/iso/casper/filesystem.squashfs
 
-    echo "> Defining kickstart as default..."
-    sed -i 's/^default.*/default kickstart/g' $workdir/iso/isolinux/txt.cfg
-    sed -i 's/^prompt.*/prompt 1/g' $workdir/iso/isolinux/isolinux.cfg
-    sed -i 's/^timeout.*/timeout 5000/g' $workdir/iso/isolinux/isolinux.cfg
-
+    # Create new squashfs
+    echo "> Creating new squashfs..."
+    mksquashfs $workdir/squashfs $workdir/iso/casper/filesystem.squashfs -info
 fi
 
 ###
@@ -337,27 +319,6 @@ for p in "${push[@]}"; do
     echo "> Pushing $src file into iso..."
     cp -f $src $workdir/iso/$dest
 done
-
-if $unsquashfs; then
-    ###
-    # Pack squashfs
-    #
-    echo "[Pack squashfs]"   
-
-    # Generating manifest
-    echo "> Regenerating manifest..."
-    chmod a+w $workdir/iso/casper/filesystem.manifest
-    chroot $workdir/squashfs dpkg-query -W --showformat='${Package} ${Version}\n' > $workdir/iso/casper/filesystem.manifest
-    chmod go-w $workdir/iso/casper/filesystem.manifest
-
-    # Remove old squashfs
-    echo "> Removing old squashfs..."
-    rm $workdir/iso/casper/filesystem.squashfs
-
-    # Create new squashfs
-    echo "> Creating new squashfs..."
-    mksquashfs $workdir/squashfs $workdir/iso/casper/filesystem.squashfs -info
-fi
 
 ###
 # Pack iso
