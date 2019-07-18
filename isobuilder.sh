@@ -71,7 +71,7 @@ while getopts "o:w:p:f:c:s:ih" opt; do
 
     p)  src=$OPTARG
         if [[ $src == *":"* ]]; then
-            IFS=':' read -r -a parts <<< "$f"
+            IFS=':' read -r -a parts <<< "$src"
             src=${parts[0]}
         fi
 
@@ -86,7 +86,7 @@ while getopts "o:w:p:f:c:s:ih" opt; do
 
     f)  src=$OPTARG
         if [[ $src == *":"* ]]; then
-            IFS=':' read -r -a parts <<< "$f"
+            IFS=':' read -r -a parts <<< "$src"
             src=${parts[0]}
         fi
 
@@ -307,8 +307,8 @@ for p in "${push[@]}"; do
     src=$p
     dest=""
         
-    if [[ $f == *":"* ]]; then
-        IFS=':' read -r -a parts <<< "$f"
+    if [[ $src == *":"* ]]; then
+        IFS=':' read -r -a parts <<< "$src"
         src=${parts[0]}
         dest=${parts[1]}
     fi
