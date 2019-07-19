@@ -169,7 +169,7 @@ cleanup() {
     umount $workdir/squashfs/dev 2> /dev/null || true
     umount /mnt 2> /dev/null || true
 
-    rm -rf $workdir
+    rm -rf $workdir 2> /dev/null || true
 }
 
 # Set up the cleanup on signal with trap
@@ -289,6 +289,7 @@ if $unsquashfs; then
     chroot $workdir/squashfs umount -lf /proc 2> /dev/null || true
     chroot $workdir/squashfs umount -lf /dev/pts 2> /dev/null || true
     chroot $workdir/squashfs umount -lf /dev 2> /dev/null || true
+
     rm $workdir/squashfs/etc/resolv.conf
     rm $workdir/squashfs/etc/hosts
 
