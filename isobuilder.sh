@@ -14,6 +14,9 @@
 # 
 # It should be run as root.
 # sudo -H ./isobuilder.sh -- ubuntu-18.04.2-desktop-amd64.iso
+# 
+# It should be run from a system that has the same version as
+# the one you want to build.
 
 set -e
 
@@ -163,6 +166,7 @@ cleanup() {
     umount $workdir/squashfs/proc 2> /dev/null || true
     umount $workdir/squashfs/sys 2> /dev/null || true
     umount $workdir/squashfs/dev/pts 2> /dev/null || true
+    umount $workdir/squashfs/dev 2> /dev/null || true
     umount /mnt 2> /dev/null || true
 
     rm -rf $workdir
@@ -225,8 +229,12 @@ if $unsquashfs; then
     mount --bind /proc $workdir/squashfs/proc
     mount --bind /sys $workdir/squashfs/sys
     mount -t devpts none $workdir/squashfs/dev/pts
+    mount --bind /dev $workdir/squashfs/dev
+    mount --bind /dev/pts $workdir/squashfs/dev/pts
+
     cp /etc/resolv.conf $workdir/squashfs/etc/resolv.conf
     cp /etc/hosts $workdir/squashfs/etc/hosts
+    cp /etc/apt/sources.list $workdir/squashfs/etc/apt/sources.list
 
     # Copy files/directories into chroot
     for f in "${files[@]}"; do
@@ -280,6 +288,7 @@ if $unsquashfs; then
     chroot $workdir/squashfs umount -lf /sys 2> /dev/null || true
     chroot $workdir/squashfs umount -lf /proc 2> /dev/null || true
     chroot $workdir/squashfs umount -lf /dev/pts 2> /dev/null || true
+    chroot $workdir/squashfs umount -lf /dev 2> /dev/null || true
     rm $workdir/squashfs/etc/resolv.conf
     rm $workdir/squashfs/etc/hosts
 
