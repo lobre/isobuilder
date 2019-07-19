@@ -161,19 +161,21 @@ done
 
 # Cleanup function
 cleanup() {
-    echo "> Cleaning working directory..."
+    if [ -d "$workdir" ]; then
+        echo "> Cleaning working directory..."
 
-    umount $workdir/squashfs/proc 2> /dev/null || true
-    umount $workdir/squashfs/sys 2> /dev/null || true
-    umount $workdir/squashfs/dev/pts 2> /dev/null || true
-    umount $workdir/squashfs/dev 2> /dev/null || true
-    umount /mnt 2> /dev/null || true
+        umount -lf $workdir/squashfs/proc 2> /dev/null || true
+        umount -lf $workdir/squashfs/sys 2> /dev/null || true
+        umount -lf $workdir/squashfs/dev/pts 2> /dev/null || true
+        umount -lf $workdir/squashfs/dev 2> /dev/null || true
+        umount -lf /mnt 2> /dev/null || true
 
-    rm -rf $workdir 2> /dev/null || true
+        rm -rf $workdir 2> /dev/null || true
+    fi
 }
 
 # Set up the cleanup on signal with trap
-trap "cleanup; exit" ERR INT TERM EXIT
+trap "cleanup; trap - EXIT; exit" ERR INT TERM EXIT
 
 # Make sure previous build in cleaned up
 cleanup > /dev/null
@@ -265,7 +267,7 @@ if $unsquashfs; then
         chmod +x $workdir/squashfs/tmp/$script_name
 
         echo "> Executing $script into chroot..."
-        chroot $workdir/squashfs /tmp/$script_name
+        chroot $workdir/squashfs /bin/bash -c "/tmp/$script_name"
 
         echo "> Deleting $script from chroot..."
         rm -f $workdir/squashfs/tmp/$script_name
@@ -280,7 +282,7 @@ if $unsquashfs; then
     # Interactive console in chroot
     if $interactive; then
         echo "> Entering interactive chroot..."
-        chroot $workdir/squashfs
+        chroot $workdir/squashfs /bin/bash
     fi
 
     # Cleaning chroot
