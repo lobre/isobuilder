@@ -250,17 +250,17 @@ if $unsquashfs; then
     for script in "${scripts[@]}"; do
 
         # get file name with extension from path
-        script=$(basename $script)
+        script_name=$(basename $script)
 
         echo "> Copying $script into chroot..."
-        cp $script $workdir/squashfs/tmp/$script
-        chmod +x $workdir/squashfs/tmp/$script
+        cp $script $workdir/squashfs/tmp/$script_name
+        chmod +x $workdir/squashfs/tmp/$script_name
 
         echo "> Executing $script into chroot..."
-        chroot $workdir/squashfs /tmp/$script
+        chroot $workdir/squashfs /tmp/$script_name
 
         echo "> Deleting $script from chroot..."
-        rm -f $workdir/squashfs/tmp/$script
+        rm -f $workdir/squashfs/tmp/$script_name
     done
 
     # Execute commands into chroot
