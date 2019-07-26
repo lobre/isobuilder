@@ -347,7 +347,10 @@ bash -c "find $workdir/iso -path ./isolinux -prune -o -type f -not -name md5sum.
 
 # Pack iso
 echo "> Creating new iso..."
-genisoimage -o $output -allow-limited-size -r -J -no-emul-boot -boot-load-size 4 -boot-info-table -b isolinux/isolinux.bin -c isolinux/boot.cat $workdir/iso 
+genisoimage -r -cache-inodes -J -l \
+  -b isolinux/isolinux.bin -c isolinux/boot.cat \
+  -no-emul-boot -boot-load-size 4 -boot-info-table \
+  -o $output $workdir/iso
 
 # Make bootable on usb
 echo "> Make bootable on usb..."
