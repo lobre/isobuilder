@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y \
     genisoimage \
     syslinux-utils \
     squashfs-tools \
+    rsync \
  && rm -rf /var/lib/apt/lists/*
 
 COPY isobuilder.sh /usr/local/bin/isobuilder

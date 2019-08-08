@@ -21,7 +21,7 @@
 set -e
 
 # Dependencies
-deps="genisoimage isohybrid mksquashfs"
+deps="genisoimage isohybrid mksquashfs rsync"
 
 # Flags
 action=false
@@ -253,7 +253,7 @@ if $unsquashfs; then
         dest=${dest#/}
 
         echo "> Copying $src into chroot at $dest..."
-        cp -rf $src $workdir/squashfs/$dest
+        rsync -az $src $workdir/squashfs/$dest > /dev/null
     done
 
     # Run scripts into chroot
@@ -333,7 +333,7 @@ for p in "${push[@]}"; do
     dest=${dest#/}
 
     echo "> Pushing $src file into iso..."
-    cp -rf $src $workdir/iso/$dest
+    rsync -az $src $workdir/iso/$dest > /dev/null
 done
 
 ###
