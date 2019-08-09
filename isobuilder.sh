@@ -11,6 +11,7 @@
 #  - genisoimage
 #  - isohybrid
 #  - mksquashfs
+#  - rsync
 # 
 # It should be run as root.
 # sudo -H ./isobuilder.sh -- ubuntu-18.04.2-desktop-amd64.iso
