@@ -266,7 +266,7 @@ if $unsquashfs; then
         dest=${dest#/}
 
         echo "> Copying $src into chroot at $dest..."
-        rsync -az $src $workdir/squashfs/$dest > /dev/null
+        rsync -az --no-owner --no-group $src $workdir/squashfs/$dest > /dev/null
     done
 
     # Run scripts into chroot
@@ -346,7 +346,7 @@ for p in "${push[@]}"; do
     dest=${dest#/}
 
     echo "> Pushing $src file into iso..."
-    rsync -az $src $workdir/iso/$dest > /dev/null
+    rsync -az --no-owner --no-group $src $workdir/iso/$dest > /dev/null
 done
 
 ###
