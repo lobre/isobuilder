@@ -151,6 +151,18 @@ if [ ! -f "$iso" ]; then
     exit 1 
 fi
 
+# Check workdir arguments not empty
+if [ -z "$workdir" ]; then
+    echo "provided workdir is empty"
+    exit 1
+fi 
+
+# Check output arguments not empty
+if [ -z "$output" ]; then
+    echo "provided output is empty"
+    exit 1
+fi 
+
 # Check dependencies are installed
 for dep in $deps
 do
