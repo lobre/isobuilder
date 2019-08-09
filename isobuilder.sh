@@ -241,7 +241,7 @@ if $unsquashfs; then
     # Copy files/directories into chroot
     for f in "${files[@]}"; do
         src=$f
-        dest=tmp/
+        dest=""
 
         if [[ $f == *":"* ]]; then
             IFS=':' read -r -a parts <<< "$f"
