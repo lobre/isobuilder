@@ -44,7 +44,7 @@ function usage {
     echo "                  and cleaned when terminated (default: $workdir)"
     echo "  -p <file/dir>   push or replace file/directory in iso (form <file/dir> to copy at root in iso or <file/dir>:<dest>)"
     echo "                  (can be used multiple times)"
-    echo "  -f <file/dir>   add file/directory to chroot (form <file> to copy in /tmp or <file/dir>:<dest>)"
+    echo "  -f <file/dir>   add file/directory to chroot (form <file> to copy at root or <file/dir>:<dest>)"
     echo "                  (can be used multiple times)"
     echo "  -c <command>    run command in chroot (can be used multiple times)"
     echo "  -s <script.sh>  play script in chroot (can be used multiple times)"
