@@ -36,6 +36,7 @@ files=()
 commands=()
 scripts=()
 interactive=false
+verbose=false
 
 function usage {
     echo "Usage: $(basename $0) [OPTION]... isofile.iso"
@@ -49,6 +50,7 @@ function usage {
     echo "  -c <command>    run command in chroot (can be used multiple times)"
     echo "  -s <script.sh>  play script in chroot (can be used multiple times)"
     echo "  -i              interactive chroot (quit with exit)"
+    echo "  -v              verbose mode"
     echo "  -h              display help"
 }
 
@@ -122,6 +124,9 @@ while getopts "o:w:p:f:c:s:ih" opt; do
     i)  interactive=true
         action=true
         unsquashfs=true
+        ;;
+
+    v)  verbose=true
         ;;
 
     esac
@@ -325,7 +330,11 @@ if $unsquashfs; then
 
     # Create new squashfs
     echo "> Creating new squashfs..."
-    mksquashfs $workdir/squashfs $workdir/iso/casper/filesystem.squashfs -info
+    if $verbose; then
+        mksquashfs $workdir/squashfs $workdir/iso/casper/filesystem.squashfs -info
+    else
+        mksquashfs $workdir/squashfs $workdir/iso/casper/filesystem.squashfs
+    fi
 fi
 
 ###
