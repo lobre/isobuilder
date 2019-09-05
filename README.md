@@ -16,6 +16,7 @@ It should be run from a system that has the same version as the one you want to 
       -c <command>    run command in chroot (can be used multiple times)
       -s <script.sh>  play script in chroot (can be used multiple times)
       -i              interactive chroot (quit with exit)
+      -v              verbose mode
       -h              display help
 
 ## Docker
