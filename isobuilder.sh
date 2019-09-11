@@ -248,7 +248,6 @@ if $unsquashfs; then
     echo "> Preparing chroot"
     mount --bind /proc $workdir/squashfs/proc
     mount --bind /sys $workdir/squashfs/sys
-    mount -t devpts none $workdir/squashfs/dev/pts
     mount --bind /dev $workdir/squashfs/dev
     mount --bind /dev/pts $workdir/squashfs/dev/pts
 
