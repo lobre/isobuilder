@@ -385,7 +385,7 @@ genisoimage -r -cache-inodes -J -l \
 
 # Make bootable on usb
 echo "> Make bootable on usb..."
-isohybrid --uefi $output
+isohybrid $output
 
 # Show information about the generated ISO
 dumpet -i $output
