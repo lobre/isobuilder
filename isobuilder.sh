@@ -12,12 +12,16 @@
 #  - isohybrid
 #  - mksquashfs
 #  - rsync
+#  - dumpet
 # 
 # It should be run as root.
 # sudo -H ./isobuilder.sh -- ubuntu-18.04.2-desktop-amd64.iso
 # 
 # It should be run from a system that has the same version as
 # the one you want to build.
+#
+# When copying files, it uses rsync and only permissions are preserved.
+# The user and the group will be set as the destination user and group.
 
 set -e
 
@@ -302,6 +306,11 @@ if $unsquashfs; then
         chroot $workdir/squashfs /bin/bash
     fi
 
+    # Recreate initrd file loaded on boot
+    echo "> Recreating initrd..."
+    # This can be useful if some casper specific configurations changed
+    chroot $workdir/squashfs update-initramfs -k all -u
+
     # Cleaning chroot
     echo "> Cleaning chroot..."
     chroot $workdir/squashfs umount -lf /sys 2> /dev/null || true
@@ -371,8 +380,12 @@ echo "> Creating new iso..."
 genisoimage -r -cache-inodes -J -l \
   -b isolinux/isolinux.bin -c isolinux/boot.cat \
   -no-emul-boot -boot-load-size 4 -boot-info-table \
+  -eltorito-alt-boot -e boot/grub/efi.img -no-emul-boot \
   -o $output $workdir/iso
 
 # Make bootable on usb
 echo "> Make bootable on usb..."
-isohybrid $output
+isohybrid --uefi $output
+
+# Show information about the generated ISO
+dumpet -i $output

@@ -3,6 +3,9 @@
 It allows an Ubuntu desktop ISO to be customised and repacked to create a new ISO.
 It should be run from a system that has the same version as the one you want to build.
 
+When copying files, it uses rsync and only permissions are preserved.
+The user and the group will be set as the destination user and group.
+
 ## Usage
 
     Usage: isobuilder [OPTION]... isofile.iso

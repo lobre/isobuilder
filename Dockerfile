@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
     syslinux-utils \
     squashfs-tools \
     rsync \
+    dumpet \
  && rm -rf /var/lib/apt/lists/*
 
 COPY isobuilder.sh /usr/local/bin/isobuilder
