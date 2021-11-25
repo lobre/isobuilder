@@ -14,6 +14,7 @@ The user and the group will be set as the destination user and group.
                       and cleaned when terminated (default: /root/.cache/isobuilder)
       -p <file/dir>   push or replace file/directory in iso (form <file/dir> to copy at root in iso or <file/dir>:<dest>)
                       (can be used multiple times)
+      -l <script.sh>  play local script in iso (can be used multiple times)
       -f <file/dir>   add file/directory to chroot (form <file> to copy at root or <file/dir>:<dest>)
                       (can be used multiple times)
       -c <command>    run command in chroot (can be used multiple times)

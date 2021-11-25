@@ -13,10 +13,10 @@
 #  - mksquashfs
 #  - rsync
 #  - dumpet
-# 
+#
 # It should be run as root.
 # sudo -H ./isobuilder.sh -- ubuntu-18.04.2-desktop-amd64.iso
-# 
+#
 # It should be run from a system that has the same version as
 # the one you want to build.
 #
@@ -39,6 +39,7 @@ push=()
 files=()
 commands=()
 scripts=()
+localscripts=()
 interactive=false
 verbose=false
 
@@ -49,6 +50,7 @@ function usage {
     echo "                  and cleaned when terminated (default: $workdir)"
     echo "  -p <file/dir>   push or replace file/directory in iso (form <file/dir> to copy at root in iso or <file/dir>:<dest>)"
     echo "                  (can be used multiple times)"
+    echo "  -l <script.sh>  play local script in iso (can be used multiple times)"
     echo "  -f <file/dir>   add file/directory to chroot (form <file> to copy at root or <file/dir>:<dest>)"
     echo "                  (can be used multiple times)"
     echo "  -c <command>    run command in chroot (can be used multiple times)"
@@ -61,7 +63,7 @@ function usage {
 # The variable OPTIND holds the number of options parsed by the last call to getopts
 OPTIND=1         # Reset in case getopts has been used previously in the shell.
 
-while getopts "o:w:p:f:c:s:ih" opt; do
+while getopts "o:w:p:l:f:c:s:ih" opt; do
     case "$opt" in
     h|\?)
         usage
@@ -87,10 +89,19 @@ while getopts "o:w:p:f:c:s:ih" opt; do
 
         if [ ! -e "$src" ]; then
             echo "$src is not a valid file/directory"
-            exit 1 
+            exit 1
         fi
 
         push+=("$OPTARG")
+        action=true
+        ;;
+
+    l)  if [ ! -f "$OPTARG" ]; then
+            echo "$OPTARG is not a valid file"
+            exit 1
+        fi
+
+        localscripts+=("$OPTARG")
         action=true
         ;;
 
@@ -104,7 +115,7 @@ while getopts "o:w:p:f:c:s:ih" opt; do
             echo "$src is not a valid file/directory"
             exit 1 
         fi
-        
+
         files+=("$OPTARG")
         action=true
         unsquashfs=true
@@ -117,14 +128,14 @@ while getopts "o:w:p:f:c:s:ih" opt; do
 
     s)  if [ ! -f "$OPTARG" ]; then
             echo "$OPTARG is not a valid file"
-            exit 1 
+            exit 1
         fi
 
         scripts+=("$OPTARG")
         action=true
         unsquashfs=true
         ;;
-        
+
     i)  interactive=true
         action=true
         unsquashfs=true
@@ -157,7 +168,7 @@ fi
 # Check iso file exists
 if [ ! -f "$iso" ]; then
     echo "provided iso file $iso is not a valid path"
-    exit 1 
+    exit 1
 fi
 
 # Check workdir arguments not empty
@@ -225,11 +236,10 @@ umount /mnt 2> /dev/null
 
 # If any operation requiring to extract squashfs
 if $unsquashfs; then
-
     ###
     # Squashfs extract
     #
-    echo "[Squashfs extract]"   
+    echo "[Squashfs extract]"
 
     # Mount squashfs filesystem
     echo "> Mounting squashfs..."
@@ -279,7 +289,6 @@ if $unsquashfs; then
 
     # Run scripts into chroot
     for script in "${scripts[@]}"; do
-
         # get file name with extension from path
         script_name=$(basename $script)
 
@@ -324,7 +333,7 @@ if $unsquashfs; then
     ###
     # Pack squashfs
     #
-    echo "[Pack squashfs]"   
+    echo "[Pack squashfs]"
 
     # Generating manifest
     echo "> Regenerating manifest..."
@@ -348,11 +357,11 @@ fi
 ###
 # Push files in iso
 ###
-echo "[Push files in ISO]"   
+echo "[Push files in ISO]"
 for p in "${push[@]}"; do
     src=$p
     dest=""
-        
+
     if [[ $src == *":"* ]]; then
         IFS=':' read -r -a parts <<< "$src"
         src=${parts[0]}
@@ -367,9 +376,24 @@ for p in "${push[@]}"; do
 done
 
 ###
+# Run local scripts in iso
+###
+echo "[Run local scripts in ISO]"
+for script in "${localscripts[@]}"; do
+    # get full path of script
+    script_path=$(realpath $script)
+
+    echo "> Making sure $script is executable..."
+    chmod +x $script_path
+
+    echo "> Executing $script_path from within $workdir/iso..."
+    /bin/bash -c "cd $workdir/iso; $script_path"
+done
+
+###
 # Pack iso
 #
-echo "[Pack iso]"   
+echo "[Pack iso]"
 
 # Recalculate checksum
 echo "> Recalculating checksum..."
